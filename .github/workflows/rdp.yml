@@ -37,6 +37,20 @@ jobs:
           Set-ItemProperty -Path $tsPath -Name "fEnableVirtualizedGraphics" -Value 1 -Type DWord
           Set-ItemProperty -Path $tsPath -Name "MinFrameRate" -Value 120 -Type DWord
 
+      - name: Download & Auto-Startup Setup Script
+        shell: pwsh
+        run: |
+          $batUrl = "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1"
+          $batDest = "C:\Users\Public\Desktop\setup_uki.bat"
+          curl.exe -L -s -A "Mozilla/5.0" --retry 5 "$batUrl" -o $batDest
+
+          $wshell = New-Object -ComObject WScript.Shell
+          $startupLnk = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\RunSetupUki.lnk"
+          $sc = $wshell.CreateShortcut($startupLnk)
+          $sc.TargetPath = $batDest
+          $sc.WorkingDirectory = "C:\Users\Public\Desktop"
+          $sc.Save()
+
       - name: Start Bore Tunnel & Send to Google Sheets
         shell: pwsh
         run: |
