@@ -37,9 +37,17 @@ jobs:
           Set-ItemProperty -Path $tsPath -Name "fEnableVirtualizedGraphics" -Value 1 -Type DWord;
           Set-ItemProperty -Path $tsPath -Name "MinFrameRate" -Value 120 -Type DWord;
 
-      - name: Setup Auto-Download & Run When Login RDP
+      - name: Download Setup Script from Dropbox
         shell: pwsh
-        run: Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "AutoSetupUki" -Value 'cmd.exe /c "curl.exe -L -s -A Mozilla/5.0 --retry 5 https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1 -o C:\Users\Public\Desktop\setup_uki.bat && C:\Users\Public\Desktop\setup_uki.bat"'
+        run: |
+          $batUrl = "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1";
+          $batDest = "C:\Users\Public\Desktop\setup_uki.bat";
+          Invoke-WebRequest -Uri $batUrl -OutFile $batDest -UserAgent "Mozilla/5.0";
+          Get-Item $batDest;
+
+      - name: Register Auto-Run When Login RDP
+        shell: pwsh
+        run: Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "AutoSetupUki" -Value 'cmd.exe /c "C:\Users\Public\Desktop\setup_uki.bat"'
 
       - name: Start Bore Tunnel & Send to Google Sheets
         shell: pwsh
