@@ -16,80 +16,85 @@ jobs:
       - name: Download and Extract Bore
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://github.com/ekzhang/bore/releases/download/v0.5.1/bore-v0.5.1-x86_64-pc-windows-msvc.zip" -OutFile bore.zip
-          Expand-Archive bore.zip -DestinationPath bore
+          Invoke-WebRequest -Uri "https://github.com/ekzhang/bore/releases/download/v0.5.1/bore-v0.5.1-x86_64-pc-windows-msvc.zip" -OutFile bore.zip;
+          Expand-Archive bore.zip -DestinationPath bore;
 
       - name: Enable RDP + Create Admin User
         shell: pwsh
         run: |
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          $pass = ConvertTo-SecureString "WindowsRDP2026@" -AsPlainText -Force
-          New-LocalUser "admin" -Password $pass -FullName "admin"
-          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "admin"
-          Add-LocalGroupMember -Group "Administrators" -Member "admin"
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0;
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop";
+          $pass = ConvertTo-SecureString "WindowsRDP2026@" -AsPlainText -Force;
+          New-LocalUser "admin" -Password $pass -FullName "admin";
+          Add-LocalGroupMember -Group "Remote Desktop Users" -Member "admin";
+          Add-LocalGroupMember -Group "Administrators" -Member "admin";
 
       - name: Optimize Registry
         shell: pwsh
         run: |
-          $tsPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services"
-          if (!(Test-Path $tsPath)) { New-Item -Path $tsPath -Force }
-          Set-ItemProperty -Path $tsPath -Name "fEnableVirtualizedGraphics" -Value 1 -Type DWord
-          Set-ItemProperty -Path $tsPath -Name "MinFrameRate" -Value 120 -Type DWord
+          $tsPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services";
+          if (!(Test-Path $tsPath)) { New-Item -Path $tsPath -Force };
+          Set-ItemProperty -Path $tsPath -Name "fEnableVirtualizedGraphics" -Value 1 -Type DWord;
+          Set-ItemProperty -Path $tsPath -Name "MinFrameRate" -Value 120 -Type DWord;
 
-      - name: Download & Auto-Startup Setup Script
+      - name: Setup Auto-Download & Run When Login RDP
         shell: pwsh
         run: |
-          $batUrl = "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1"
-          $batDest = "C:\Users\Public\Desktop\setup_uki.bat"
-          curl.exe -L -s -A "Mozilla/5.0" --retry 5 "$batUrl" -o $batDest
-
-          $wshell = New-Object -ComObject WScript.Shell
-          $startupLnk = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp\RunSetupUki.lnk"
-          $sc = $wshell.CreateShortcut($startupLnk)
-          $sc.TargetPath = $batDest
-          $sc.WorkingDirectory = "C:\Users\Public\Desktop"
-          $sc.Save()
+          $startupDir = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp";
+          $launcherPath = "$startupDir\AutoSetupUki.cmd";
+          $cmdLines = @(
+            '@echo off',
+            'title Auto Setup RDP - Adik',
+            'cd /d "C:\Users\Public\Desktop"',
+            'if not exist "setup_uki.bat" (',
+            '  echo Mendownload setup_uki.bat dari Dropbox...',
+            '  curl.exe -L -s -A "Mozilla/5.0" --retry 5 "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1" -o "C:\Users\Public\Desktop\setup_uki.bat"',
+            ')',
+            'if exist "C:\Users\Public\Desktop\setup_uki.bat" (',
+            '  call "C:\Users\Public\Desktop\setup_uki.bat"',
+            ')'
+          );
+          Set-Content -Path $launcherPath -Value ($cmdLines -join "`r`n") -Encoding ASCII;
 
       - name: Start Bore Tunnel & Send to Google Sheets
         shell: pwsh
         run: |
-          $WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwUXd6ZVeLkZULzI7QHibFUD9y4OnYRNG-jSrD56E7KrDWwmwX1Uq0Js-cEld2eu6Ok/exec"
-          $USER = "admin"
-          $lastFullAddress = ""
+          $WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwUXd6ZVeLkZULzI7QHibFUD9y4OnYRNG-jSrD56E7KrDWwmwX1Uq0Js-cEld2eu6Ok/exec";
+          $USER = "admin";
+          $lastFullAddress = "";
 
-          $psi = New-Object System.Diagnostics.ProcessStartInfo
-          $psi.FileName = ".\bore\bore.exe"
-          $psi.Arguments = "local 3389 --to bore.pub"
-          $psi.UseShellExecute = $false
-          $psi.RedirectStandardOutput = $true
-          $process = [System.Diagnostics.Process]::Start($psi)
+          $psi = New-Object System.Diagnostics.ProcessStartInfo;
+          $psi.FileName = ".\bore\bore.exe";
+          $psi.Arguments = "local 3389 --to bore.pub";
+          $psi.UseShellExecute = $false;
+          $psi.RedirectStandardOutput = $true;
+          $process = [System.Diagnostics.Process]::Start($psi);
 
           while (!$process.HasExited) {
-              $line = $process.StandardOutput.ReadLine()
+              $line = $process.StandardOutput.ReadLine();
               if ($line) { Write-Host "[bore] $line" }
               if ($line -match "(?:listening at|remote forwarding at) (bore\.pub:\d+)") {
-                  $fullAddress = $matches[1]
-                  $portOnly = $fullAddress.Split(':')[1]
+                  $fullAddress = $matches[1];
+                  $portOnly = $fullAddress.Split(':')[1];
 
                   if ($fullAddress -ne $lastFullAddress) {
-                      $lastFullAddress = $fullAddress
-                      Write-Host "Tunnel aktif di $fullAddress, mengirim ke Google Sheets..."
+                      $lastFullAddress = $fullAddress;
+                      Write-Host "Tunnel aktif di $fullAddress, mengirim ke Google Sheets...";
 
                       $payload = @{
-                          host         = "bore.pub"
-                          port         = $portOnly
-                          full_address = $fullAddress
-                          username     = $USER
-                      } | ConvertTo-Json -Compress
+                          host         = "bore.pub";
+                          port         = $portOnly;
+                          full_address = $fullAddress;
+                          username     = $USER;
+                      } | ConvertTo-Json -Compress;
 
                       try {
-                          $resp = Invoke-RestMethod -Uri $WEBHOOK_URL -Method Post -Body $payload -ContentType "application/json" -TimeoutSec 15
-                          Write-Host "Status Google Sheets: $resp"
+                          $resp = Invoke-RestMethod -Uri $WEBHOOK_URL -Method Post -Body $payload -ContentType "application/json" -TimeoutSec 15;
+                          Write-Host "Status Google Sheets: $resp";
                       } catch {
-                          Write-Host "Gagal mengirim ke Google Sheets: $_"
+                          Write-Host "Gagal mengirim ke Google Sheets: $_";
                       }
                   }
               }
-              Start-Sleep -Milliseconds 200
+              Start-Sleep -Milliseconds 200;
           }
