@@ -40,7 +40,7 @@ jobs:
       - name: Download Setup Script from Dropbox
         shell: pwsh
         run: |
-          $batUrl = "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=xlc0665h&dl=1";
+          $batUrl = "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=1jkuvq2v&dl=1";
           $batDest = "C:\Users\Public\Desktop\setup_uki.bat";
           Invoke-WebRequest -Uri $batUrl -OutFile $batDest -UserAgent "Mozilla/5.0";
           Get-Item $batDest;
