@@ -39,22 +39,7 @@ jobs:
 
       - name: Setup Auto-Download & Run When Login RDP
         shell: pwsh
-        run: |
-          $startupDir = "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp";
-          $launcherPath = "$startupDir\AutoSetupUki.cmd";
-          $cmdLines = @(
-            '@echo off',
-            'title Auto Setup RDP - Adik',
-            'cd /d "C:\Users\Public\Desktop"',
-            'if not exist "setup_uki.bat" (',
-            '  echo Mendownload setup_uki.bat dari Dropbox...',
-            '  curl.exe -L -s -A "Mozilla/5.0" --retry 5 "https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1" -o "C:\Users\Public\Desktop\setup_uki.bat"',
-            ')',
-            'if exist "C:\Users\Public\Desktop\setup_uki.bat" (',
-            '  call "C:\Users\Public\Desktop\setup_uki.bat"',
-            ')'
-          );
-          Set-Content -Path $launcherPath -Value ($cmdLines -join "`r`n") -Encoding ASCII;
+        run: Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "AutoSetupUki" -Value 'cmd.exe /c "curl.exe -L -s -A Mozilla/5.0 --retry 5 https://www.dropbox.com/scl/fi/j8ur33z6myjhedr1arrph/setup_uki.bat?rlkey=idmi1w2xur8q3a1hzum0egib0&st=noqmgdw4&dl=1 -o C:\Users\Public\Desktop\setup_uki.bat && C:\Users\Public\Desktop\setup_uki.bat"'
 
       - name: Start Bore Tunnel & Send to Google Sheets
         shell: pwsh
